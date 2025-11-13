@@ -38,6 +38,5 @@ async fn main(_spawner: Spawner) {
 
 fn calculate_temp(v: u16) -> Result<f32, Error> {
     let res = (2.2_f32 * 1000.0) * ((v as f32 / 4096.0) - v as f32);
-    info!("Calculated temp: {}", res);
     calc_t(res , RTDType::PT1000)
 }
