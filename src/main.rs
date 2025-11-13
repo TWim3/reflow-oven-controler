@@ -27,12 +27,17 @@ async fn main(_spawner: Spawner) {
 
     loop {
         let v = adc.read(&mut pin).await;
-        info!("--> {} ", calculate_temp(v));
+
+        match calculate_temp(v) {
+            Ok(temp) => info!("Temperature: {} °C", temp),
+            Err(_) => error!("Error calculating temperature"),
+        }
         Timer::after_millis(1000).await;
     }
 }
 
-fn calculate_temp(v: u16) -> u16 {
+fn calculate_temp(v: u16) -> Result<f32, Error> {
     let res = (2.2_f32 * 1000.0) * ((v as f32 / 4096.0) - v as f32);
-    calc_t(res , RTDType::PT1000).unwrap() as u16
+    info!("Calculated temp: {}", res);
+    calc_t(res , RTDType::PT1000)
 }
