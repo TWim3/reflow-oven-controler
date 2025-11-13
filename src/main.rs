@@ -23,13 +23,17 @@ async fn main(_spawner: Spawner) {
     let mut pin = p.PA3;
 
 
-    adc.set_sample_time(adc::SampleTime::CYCLES41_5);
+  adc.set_sample_time(adc::SampleTime::CYCLES239_5);
 
     loop {
-        let v = adc.read(&mut pin).await;
+        let mut acc = 0u32;
+for _ in 0..16 {
+    acc += adc.read(&mut pin).await as u32;
+}
+let value = (acc / 16) as u16;
 
-        match calculate_temp(v) {
-            Ok(temp) => info!("Temperature: {} °C", temp),
+        match calculate_temp(value) {
+            Ok(temp) => info!("Temperature: {} °C Volt: {}", temp,value),
             Err(_) => error!("Error calculating temperature"),
         }
         Timer::after_millis(1000).await;
@@ -37,6 +41,6 @@ async fn main(_spawner: Spawner) {
 }
 
 fn calculate_temp(v: u16) -> Result<f32, Error> {
-    let res = (2.2_f32 * 1000.0) * ((v as f32 / 4096.0) - v as f32);
+    let res = ((2.2_f32 * 1000.0) * v as f32 )/( 4096.0 - v as f32);
     calc_t(res , RTDType::PT1000)
 }
