@@ -21,21 +21,12 @@ async fn main(_spawner: Spawner) {
     let mut adc = Adc::new(p.ADC1);
     let mut pin = p.PB1;
 
-    let mut vrefint = adc.enable_vref();
-    let vrefint_sample = adc.read(&mut vrefint).await;
-    let convert_to_millivolts = |sample| {
-        // From http://www.st.com/resource/en/datasheet/CD00161566.pdf
-        // 5.3.4 Embedded reference voltage
-        const VREFINT_MV: u32 = 1200; // mV
-
-        (u32::from(sample) * VREFINT_MV / u32::from(vrefint_sample)) as u16
-    };
 
     adc.set_sample_time(adc::SampleTime::CYCLES41_5);
 
     loop {
         let v = adc.read(&mut pin).await;
-        info!("--> {} - {} mV", v, convert_to_millivolts(v));
+        info!("--> {} ", v);
         Timer::after_millis(100).await;
     }
 }
