@@ -31,6 +31,8 @@ async fn main(_spawner: Spawner) {
         (u32::from(sample) * VREFINT_MV / u32::from(vrefint_sample)) as u16
     };
 
+    adc.set_sample_time(adc::SampleTime::CYCLES41_5);
+
     loop {
         let v = adc.read(&mut pin).await;
         info!("--> {} - {} mV", v, convert_to_millivolts(v));
