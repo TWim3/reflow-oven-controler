@@ -26,11 +26,21 @@ async fn main(_spawner: Spawner) {
   adc.set_sample_time(adc::SampleTime::CYCLES239_5);
 
     loop {
-        let mut acc = 0u32;
-for _ in 0..16 {
-    acc += adc.read(&mut pin).await as u32;
-}
-let value = (acc / 16) as u16;
+        // Anzahl der Samples für Oversampling.
+        const OVERSAMPLE_COUNT: u32 = 256;
+
+        let mut acc: u32 = 0;
+
+        for _ in 0..OVERSAMPLE_COUNT {
+        //ADC-Wert lesen und aufaddieren
+            acc += adc.read(&mut pin).await as u32;
+        }
+
+        // Oversampling-Skalierung:
+        // Die Summe enthält 12 Bit (ADC) + 8 Bit (256 Samples) = 20 Bit Information.
+        // Wir wollen effektiv 16 Bit behalten → 20 - 16 = 4 Bit wegschieben.
+        // Daher: Rechts-Shiften um 4 Bit.
+        let value: u16 = (acc >> 4) as u16;
 
         match calculate_temp(value) {
             Ok(temp) => info!("Temperature: {} °C Volt: {}", temp,value),
