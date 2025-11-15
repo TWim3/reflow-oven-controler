@@ -41,7 +41,7 @@ async fn main(_spawner: Spawner) {
 // Rechts-Shiften um 4 Bit.
 
         let value: u16 = (acc >> 4) as u16;
-
+info!("Wert ADC: {}", value);
 //Output Temperature
         match calculate_temp(value) {
             Ok(temp) => info!("Temperature: {} °C Volt: {}", temp,value),
@@ -54,7 +54,7 @@ async fn main(_spawner: Spawner) {
 //Temperatur Umwandlung
 fn calculate_temp(v: u16) -> Result<f32, Error> {
 //ADC Value to Resistance
-    let res = ((2.2_f32 * 1000.0) * v as f32 )/( 4096.0 - v as f32);
+    let res = ((2.2_f32 * 1000.0) * v as f32 )/( 65526.0 - v as f32);
 //Resistance to Temperature
     calc_t(res , RTDType::PT1000)
 }
