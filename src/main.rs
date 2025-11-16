@@ -7,9 +7,9 @@ use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::adc::Adc;
 use embassy_stm32::gpio::{Input, Pull};
-use embassy_stm32::peripherals::{ADC1, PA3};
-use embassy_stm32::{Peri, adc, bind_interrupts};
-use embassy_time::Timer;
+use embassy_stm32::peripherals::{ADC1};
+use embassy_stm32::{adc, bind_interrupts};
+use embassy_time::{Timer};
 use {defmt_rtt as _, panic_probe as _};
 
 bind_interrupts!(struct Irqs {
