@@ -17,7 +17,7 @@ pub async fn pwm_test(signal_input: Peri<'static, PA7>, tim3: Peri<'static, TIM3
     // Implement PWM functionality tests here.
 
     let ch2 = CapturePin::new(signal_input, Pull::None);
-    let ic = InputCapture::new(
+    let mut ic = InputCapture::new(
         tim3,
         None,
         Some(ch2),
@@ -31,10 +31,15 @@ pub async fn pwm_test(signal_input: Peri<'static, PA7>, tim3: Peri<'static, TIM3
     let timer = Instant::now();
 
     loop {
-        if(ic.get_input_interrupt(Channel::Ch2)) {
-            info!("Interrupt received at {:?}", timer.as_millis());
-            Timer::after_millis(10).await;
-        }
+        let falling = ic.wait_for_falling_edge(Channel::Ch2).await;
+
+        info!("Falling edge at: {:?}", timer.as_millis());
+        info!("Captured value: {:?}", falling);
+        
+
+
+
+
     }
 }
 
