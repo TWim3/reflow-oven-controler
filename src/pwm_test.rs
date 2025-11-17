@@ -60,7 +60,7 @@ pub async fn pwm_test(
         info!("Zero crossing detected");
 
         pwm.enable(Channel::Ch2);
-        Timer::after_millis(1).await;
+        Timer::after_millis(2).await;
         pwm.disable(Channel::Ch2);
     }
 }
