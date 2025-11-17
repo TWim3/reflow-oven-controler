@@ -5,7 +5,7 @@ use embassy_stm32::peripherals::{PA7, TIM3};
 use embassy_stm32::time::khz;
 use embassy_stm32::timer::Channel;
 use embassy_stm32::timer::input_capture::{CapturePin, InputCapture};
-use embassy_time::Instant;
+use embassy_time::{Instant, Timer};
 
 bind_interrupts!(struct Irqs {
     TIM3 => timer::CaptureCompareInterruptHandler<peripherals::TIM3>;
@@ -33,6 +33,7 @@ pub async fn pwm_test(signal_input: Peri<'static, PA7>, tim3: Peri<'static, TIM3
     loop {
         if(ic.get_input_interrupt(Channel::Ch2)) {
             info!("Interrupt received at {:?}", timer.as_millis());
+            Timer::after_millis(10).await;
         }
     }
 }
