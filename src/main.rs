@@ -38,7 +38,7 @@ async fn main(spawner: Spawner) {
     let mut timer = oven_timer::OvenTimer::new();
     let mut pid_controller = PidController::new(1.0, 100.0);
 
-    spawner.spawn(pwm_test(p.PA7, p.TIM3)).expect("TODO: panic message");
+    spawner.spawn(pwm_test(p.PA7, p.TIM3, p.PA1, p.TIM2)).expect("TODO: panic message");
 
     loop {
         // if start_button.is_high() {
