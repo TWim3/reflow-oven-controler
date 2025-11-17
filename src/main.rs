@@ -1,15 +1,17 @@
 #![no_std]
 #![no_main]
 
+mod oven_timer;
 mod temp_sensor;
+mod pid_controller;
 
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::adc::Adc;
 use embassy_stm32::gpio::{Input, Pull};
-use embassy_stm32::peripherals::{ADC1};
+use embassy_stm32::peripherals::ADC1;
 use embassy_stm32::{adc, bind_interrupts};
-use embassy_time::{Timer};
+use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 
 bind_interrupts!(struct Irqs {
@@ -26,9 +28,11 @@ async fn main(_spawner: Spawner) {
     let mut temp_sensor = temp_sensor::TempSensor::new(adc, p.PA3);
 
     let start_button = Input::new(p.PB0, Pull::None); // TODO: Change to real pin
-    let stop_button = Input::new(p.PB1, Pull::None);  // TODO: Change to real pin
+    let stop_button = Input::new(p.PB1, Pull::None); // TODO: Change to real pin
 
     let mut should_run = false;
+
+    let mut timer = oven_timer::OvenTimer::new();
 
     loop {
         if start_button.is_high() {
@@ -40,6 +44,8 @@ async fn main(_spawner: Spawner) {
         if stop_button.is_high() {
             Timer::after_millis(50).await;
             info!("Stopping oven task...");
+
+            timer.clear();
             should_run = false;
         }
 
@@ -47,6 +53,8 @@ async fn main(_spawner: Spawner) {
             Timer::after_millis(100).await;
             continue;
         }
+
+        let elapsed = timer.elapsed_secs();
 
         match temp_sensor.read_temperature().await {
             Ok(temp) => info!("Temperature: {} °C", temp),
