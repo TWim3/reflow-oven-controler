@@ -2,8 +2,8 @@
 #![no_main]
 
 mod oven_timer;
-mod temp_sensor;
-mod pid_controller;
+mod temperature;
+pub mod temp_sensor;
 
 use defmt::*;
 use embassy_executor::Spawner;
@@ -13,6 +13,7 @@ use embassy_stm32::peripherals::ADC1;
 use embassy_stm32::{adc, bind_interrupts};
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
+use crate::temperature::pid_controller::PidController;
 
 bind_interrupts!(struct Irqs {
     ADC1_2 => adc::InterruptHandler<ADC1>;
@@ -33,6 +34,7 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     let mut timer = oven_timer::OvenTimer::new();
+    let mut pid_controller = PidController::new(1.0, 100.0);
 
     loop {
         if start_button.is_high() {
