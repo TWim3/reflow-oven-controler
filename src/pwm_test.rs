@@ -31,11 +31,10 @@ pub async fn pwm_test(signal_input: Peri<'static, PA7>, tim3: Peri<'static, TIM3
     let timer = Instant::now();
 
     loop {
-        let falling = ic.wait_for_falling_edge(Channel::Ch2).await;
+        let _falling = ic.wait_for_falling_edge(Channel::Ch2).await;
+        info!("Falling edge at: {:?}", timer.elapsed().as_millis());
+        // info!("Captured value: {:?}", falling);
 
-        info!("Falling edge at: {:?}", timer.as_millis());
-        info!("Captured value: {:?}", falling);
-        
 
 
 
