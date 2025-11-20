@@ -1,83 +1,135 @@
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
-use panic_halt as _;
+use defmt::*;
+use embassy_executor::Spawner;
+use embassy_time::Timer;
+use {defmt_rtt as _, panic_probe as _};
 
-use stm32f1xx_hal::{
-    pac::{self, interrupt},
-    prelude::*,
-    timer::{Timer, Channel},
-    gpio::gpioa::PA7,
-    gpio::gpiob::PB1,
-    gpio::{Input, PullUp},
-};
+use embassy_stm32::gpio::{Input, Output, Level, Pull, Speed, OutputType};
+use embassy_stm32::init;
 
-static mut FLAG: bool = false;
+// 100 Halbwellen pro Sekunde bei 50 Hz Netz
+const HALFWAVES_PER_SECOND: u8 = 100;
 
-#[entry]
-fn main() -> ! {
-    let dp = pac::Peripherals::take().unwrap();
-    let cp = pac::CorePeripherals::take().unwrap();
+// Gate-Impulsdauer für Triac (µs)
+// Muss lang genug sein, damit der Triac sicher zündet
+const TRIAC_PULSE_US: u64 = 150;
 
-    // Clock setup
-    let mut flash = dp.FLASH.constrain();
-    let mut rcc   = dp.RCC.constrain();
-    let clocks = rcc.cfgr.use_hse(8.mhz()).sysclk(72.mhz()).freeze(&mut flash.acr);
+// Sollwert z.B. Temperatur
+const SETPOINT: f32 = 180.0;
 
-    // GPIO
-    let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
-    let mut gpiob = dp.GPIOB.split(&mut rcc.apb2);
+// PID
+struct PID {
+    kp: f32,
+    ki: f32,
+    kd: f32,
+    integral: f32,
+    prev_error: f32,
+    out_min: f32,
+    out_max: f32,
+}
 
-    // PA7 Input
-    let pa7: PA7<Input<PullUp>> = gpioa.pa7.into_pull_up_input(&mut gpioa.crl);
+impl PID {
+    fn new(kp: f32, ki: f32, kd: f32, out_min: f32, out_max: f32) -> Self {
+        Self {
+            kp,
+            ki,
+            kd,
+            integral: 0.0,
+            prev_error: 0.0,
+            out_min,
+            out_max,
+        }
+    }
 
-    // PB1 → TIM3_CH4 PWM Pin
-    let pb1 = gpiob.pb1.into_alternate_push_pull(&mut gpiob.crl);
+    fn update(&mut self, setpoint: f32, pv: f32, dt: f32) -> f32 {
+        let error = setpoint - pv;
+        let p = self.kp * error;
 
-    // -----------------------------
-    // EXTI7 richtig konfigurieren
-    // -----------------------------
+        self.integral += error * dt;
+        if self.integral > 1000.0 {
+            self.integral = 1000.0;
+        } else if self.integral < -1000.0 {
+            self.integral = -1000.0;
+        }
+        let i = self.ki * self.integral;
 
-    // AFIO für EXTI konfigurieren
-    let mut afio = dp.AFIO.constrain(&mut rcc.apb2);
+        let d = self.kd * (error - self.prev_error) / dt;
+        self.prev_error = error;
 
-    // PA7 → EXTI7 verbinden
-    afio.exticr2.exticr2().modify(|_, w| w.exti7().pa7());
+        let mut out = p + i + d;
+        if out > self.out_max {
+            out = self.out_max;
+        } else if out < self.out_min {
+            out = self.out_min;
+        }
+        out
+    }
+}
 
-    // EXTI aktivieren (fallende Flanke)
-    dp.EXTI.ftsr.modify(|_, w| w.tr7().set_bit()); // Falling trigger
-    dp.EXTI.rtsr.modify(|_, w| w.tr7().clear_bit()); // Rising off
-    dp.EXTI.imr.modify(|_, w| w.mr7().set_bit());   // Interrupt Mask Enable
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {
+    let p = init(Default::default());
+    info!("Zero-cross gesteuerte Halbwellen-Triacsteuerung startet");
 
-    // Interrupt freigeben
-    unsafe { cortex_m::peripheral::NVIC::unmask(pac::Interrupt::EXTI9_5) };
+    // PA7 als Zero-Crossing-Input
+    let mut zero_cross = Input::new(p.PA7, Pull::Up);
 
-    // -----------------------------
-    // PWM auf PB1 (TIM3_CH4)
-    // -----------------------------
-    let mut pwm = Timer::tim3(dp.TIM3, &clocks, &mut rcc.apb1)
-        .pwm_hz(pb1, &mut afio.mapr, 1.khz());
+    // PB1 als Triac-Gate-Output
+    let mut triac_gate = Output::new(
+        p.PB1,
+        Level::Low,           // initial aus
+        Speed::VeryHigh,
+        OutputType::PushPull,
+    );
 
-    pwm.enable(Channel::C4);
-    pwm.set_duty(Channel::C4, pwm.get_max_duty() / 2);
+    // PID initialisieren; dt ≈ 1/100 s (100 Hz Halbwellen)
+    let mut pid = PID::new(2.0, 0.5, 0.1, 0.0, 100.0);
+    let dt: f32 = 1.0 / (HALFWAVES_PER_SECOND as f32);
+
+    // Halbwellen-Zähler und Duty aus PID
+    let mut halfwave_idx: u8 = 0;
+    let mut duty: u8 = 0;
 
     loop {
-        if unsafe { FLAG } {
-            unsafe { FLAG = false };
-            // z. B. Duty Cycle ändern
-            pwm.set_duty(Channel::C4, pwm.get_max_duty() / 4);
+        // Auf fallende Flanke des Zero-Cross-Eingangs warten
+        //
+        // -> hier wird intern EXTI genutzt, Pulsbreite (6 µs) ist egal:
+        //    die Flanke wird gelatched.
+        zero_cross.wait_for_falling_edge().await;
+
+        // Neue Halbwelle beginnt
+        halfwave_idx = (halfwave_idx + 1) % HALFWAVES_PER_SECOND;
+
+        // Einmal pro "Fenster" von 100 Halbwellen den PID updaten
+        if halfwave_idx == 0 {
+            let pv = read_process_value().await; // z.B. aktuelle Temperatur
+            let pid_out = pid.update(SETPOINT, pv, dt);
+
+            let pid_clamped = pid_out.clamp(0.0, 100.0);
+            duty = pid_clamped as u8;
+
+            info!("PV={} SP={} PID={} Duty={}", pv, SETPOINT, pid_out, duty);
+        }
+
+        // Entscheiden, ob diese Halbwelle "an" oder "aus" ist
+        if halfwave_idx < duty {
+            // Diese Halbwelle ist "an":
+            // -> direkt am Beginn (also jetzt) Triac zünden
+            triac_gate.set_high();
+            Timer::after_micros(TRIAC_PULSE_US).await;
+            triac_gate.set_low();
+            // Danach bleibt der Triac bis zum nächsten Nulldurchgang leitend
+        } else {
+            // Diese Halbwelle ist "aus": Triac wird nicht gezündet
+            triac_gate.set_low();
         }
     }
 }
 
-#[interrupt]
-fn EXTI9_5() {
-    // EXTI7 pending Löschen
-    let exti = unsafe { &*pac::EXTI::ptr() };
-    exti.pr.write(|w| w.pr7().set_bit());
-
-    unsafe {
-        FLAG = true;
-    }
+// Dummy: hier musst du deinen echten Istwert (z.B. Temperatur) zurückgeben
+async fn read_process_value() -> f32 {
+    // TODO: ADC lesen, PT1000 berechnen, etc.
+    150.0
 }
