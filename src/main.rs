@@ -5,6 +5,7 @@ mod oven_timer;
 mod temperature;
 pub mod temp_sensor;
 mod pwm_test;
+mod test;
 
 use crate::oven_timer::OvenTimer;
 use crate::pwm_test::pwm_test;
@@ -21,6 +22,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 
 const ENABLE_OVEN_CONTROLLER: bool = false;
+const ENABLE_TEST: bool = true;
 
 bind_interrupts!(struct Irqs {
     ADC1_2 => adc::InterruptHandler<ADC1>;
@@ -32,9 +34,15 @@ async fn main(spawner: Spawner) {
 
     if ENABLE_OVEN_CONTROLLER {
         run_oven_controller(spawner, peripherals.take().unwrap()).await;
+    } else if ENABLE_TEST {
+        // Test-Einstiegspunkt in test.rs, z.B.:
+        // pub async fn run_test(spawner: Spawner, p: Peripherals) -> ! { ... }
+        test::run_test(spawner, peripherals.take().unwrap()).await;
     } else {
         let _ = peripherals.take();
-        info!("Main idle so Test.rs can run standalone. Set ENABLE_OVEN_CONTROLLER=true to restore.");
+        info!(
+            "Main idle. Set ENABLE_OVEN_CONTROLLER=true für den Controller oder ENABLE_TEST=true für die Tests."
+        );
         idle_loop().await;
     }
 }
