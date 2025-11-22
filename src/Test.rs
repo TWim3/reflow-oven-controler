@@ -9,10 +9,10 @@ use embassy_time::Timer;
 const HALFWAVES_PER_SECOND: u8 = 100;
 
 // Fester Duty Cycle in Prozent
-const DUTY_CYCLE_PERCENT: u8 = 100;
+const DUTY_CYCLE_PERCENT: u8 = 50;
 
 // Gate-Impulsdauer für Triac (µs)
-const TRIAC_PULSE_US: u64 = 9999;
+const TRIAC_PULSE_US: u64 = 2000;
 
 fn percent_to_halfwave_count(percent: u8) -> u8 {
     let clamped = percent.min(100);
@@ -33,7 +33,7 @@ pub async fn run_test(_spawner: Spawner, p: Peripherals) -> ! {
     let mut halfwave_idx: u8 = 0;
 
     loop {
-        zero_cross.wait_for_falling_edge().await;
+        zero_cross.wait_for_rising_edge().await;
 
         halfwave_idx = (halfwave_idx + 1) % HALFWAVES_PER_SECOND;
 
