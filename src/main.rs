@@ -5,6 +5,7 @@ mod oven_timer;
 mod temperature;
 pub mod temp_sensor;
 mod pwm_test;
+mod pid_test;
 mod test;
 
 use crate::oven_timer::OvenTimer;
@@ -23,6 +24,7 @@ use {defmt_rtt as _, panic_probe as _};
 
 const ENABLE_OVEN_CONTROLLER: bool = true;
 const ENABLE_TEST: bool = true;
+const ENABLE_PID_TEST: bool = true;
 
 bind_interrupts!(struct Irqs {
     ADC1_2 => adc::InterruptHandler<ADC1>;
@@ -34,6 +36,8 @@ async fn main(spawner: Spawner) {
 
     if ENABLE_OVEN_CONTROLLER {
         run_oven_controller(spawner, peripherals.take().unwrap()).await;
+    } else if ENABLE_PID_TEST {
+        run_pid_test(peripherals.take().unwrap()).await;
     } else if ENABLE_TEST {
         // Test-Einstiegspunkt in test.rs, z.B.:
         // pub async fn run_test(spawner: Spawner, p: Peripherals) -> ! { ... }
@@ -41,7 +45,7 @@ async fn main(spawner: Spawner) {
     } else {
         let _ = peripherals.take();
         info!(
-            "Main idle. Set ENABLE_OVEN_CONTROLLER=true für den Controller oder ENABLE_TEST=true für die Tests."
+            "Main idle. Set ENABLE_OVEN_CONTROLLER=true für den Controller, ENABLE_PID_TEST=true für den PID-Test oder ENABLE_TEST=true für die Tests."
         );
         idle_loop().await;
     }
@@ -91,6 +95,24 @@ async fn run_oven_controller(spawner: Spawner, p: Peripherals) -> ! {
         match temp_sensor.read_temperature().await {
             Ok(temp) => info!("Temperature: {} °C", temp),
             Err(_) => error!("Error calculating temperature"),
+        }
+
+        Timer::after_millis(500).await;
+    }
+}
+
+async fn run_pid_test(p: Peripherals) -> ! {
+    let mut adc = Adc::new(p.ADC1);
+    adc.set_sample_time(adc::SampleTime::CYCLES239_5);
+    let mut temp_sensor = TempSensor::new(adc, p.PA3);
+
+    loop {
+        match temp_sensor.read_temperature().await {
+            Ok(temp) => {
+                let output = pid_test::pid_output_for_duty_cycle(temp);
+                info!("PID test: temperature {} °C -> duty output {}%", temp, output);
+            }
+            Err(_) => error!("PID test: failed to read temperature"),
         }
 
         Timer::after_millis(500).await;

@@ -9,7 +9,7 @@ use embassy_time::Timer;
 const HALFWAVES_PER_SECOND: u8 = 100;
 
 // Fester Duty Cycle in Prozent
-const DUTY_CYCLE_PERCENT: u8 = 50;
+pub const DUTY_CYCLE_PERCENT: u8 = 50;
 
 // Gate-Impulsdauer für Triac (µs)
 const TRIAC_PULSE_US: u64 = 2000;
