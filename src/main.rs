@@ -21,7 +21,7 @@ use embassy_stm32::{bind_interrupts, Peripherals};
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 
-const ENABLE_OVEN_CONTROLLER: bool = false;
+const ENABLE_OVEN_CONTROLLER: bool = true;
 const ENABLE_TEST: bool = true;
 
 bind_interrupts!(struct Irqs {
@@ -52,8 +52,8 @@ async fn run_oven_controller(spawner: Spawner, p: Peripherals) -> ! {
     adc.set_sample_time(adc::SampleTime::CYCLES239_5);
     let mut temp_sensor = TempSensor::new(adc, p.PA3);
 
-    // let start_button = Input::new(p.PB0, Pull::None); // TODO: Change to real pin
-    // let stop_button = Input::new(p.PB1, Pull::None); // TODO: Change to real pin
+    let start_button = Input::new(p.PA8, Pull::Down);
+    let stop_button = Input::new(p.PB14, Pull::Up);
 
     #[allow(unused_mut)]
     let mut should_run = false;
@@ -66,19 +66,19 @@ async fn run_oven_controller(spawner: Spawner, p: Peripherals) -> ! {
         .expect("PWM test task spawn failed");
 
     loop {
-        // if start_button.is_high() {
-        //     Timer::after_millis(50).await;
-        //     info!("Starting oven task...");
-        //     should_run = true;
-        // }
-        //
-        // if stop_button.is_high() {
-        //     Timer::after_millis(50).await;
-        //     info!("Stopping oven task...");
-        //
-        //     timer.clear();
-        //     should_run = false;
-        // }
+         if start_button.is_high() {
+             Timer::after_millis(50).await;
+             info!("Starting oven task...");
+             should_run = true;
+         }
+        
+         if stop_button.is_low() {
+             Timer::after_millis(50).await;
+             info!("Stopping oven task...");
+        
+             timer.clear();
+             should_run = false;
+         }
 
         if !should_run {
             Timer::after_millis(100).await;
