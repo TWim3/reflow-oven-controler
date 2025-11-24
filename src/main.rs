@@ -78,8 +78,12 @@ async fn main(_spawner: Spawner) {
             }
         };
 
+        info!("Current temperature: {} C", temp);
+
         let _elapsed = timer.elapsed_secs();
         let pid = pid_controller.compute_control(&temp);
+
+        info!("Computed pid: {}", pid.output);
 
         signal_output
             .output_signal(halfwave_idx as u32, pid.output as u32)
