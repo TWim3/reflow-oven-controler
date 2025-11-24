@@ -6,6 +6,7 @@ pub const DEFAULT_D_GAIN: f32 = 2.0;
 
 pub struct PidController {
     pid: Pid<f32>,
+    output_limit: f32,
 }
 
 impl PidController {
@@ -14,11 +15,15 @@ impl PidController {
         pid.p(DEFAULT_P_GAIN, output_limit)
             .i(DEFAULT_I_GAIN, output_limit)
             .d(DEFAULT_D_GAIN, output_limit);
-        PidController { pid }
+        PidController { pid, output_limit }
     }
 
     pub fn update_setpoint(&mut self, new_setpoint: f32) {
-        self.pid.setpoint(new_setpoint);
+        self.pid
+            .setpoint(new_setpoint)
+            .p(DEFAULT_P_GAIN, self.output_limit)
+            .i(DEFAULT_I_GAIN, self.output_limit)
+            .d(DEFAULT_D_GAIN, self.output_limit);
     }
 
     pub fn update_gains(&mut self, p: f32, i: f32, d: f32) {

@@ -41,14 +41,16 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     // PID Controller and Timer
+    const PID_SETPOINT: f32 = 50.0;
+
     let mut timer = OvenTimer::new();
-    let mut pid_controller = PidController::new(1.0, 100.0);
+    let mut pid_controller = PidController::new(PID_SETPOINT, 100.0);
 
     // Output
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
     let triac_gate = Output::new(p.PB1, Level::Low, Speed::VeryHigh);
     let mut signal_output = SignalOutput::new(zero_cross, triac_gate);
-    let halfwave_idx: u8 = 0;
+    let mut halfwave_idx: u8 = 0;
 
     loop {
         if start_button.is_high() && !should_run {
@@ -61,8 +63,10 @@ async fn main(_spawner: Spawner) {
             Timer::after_millis(50).await;
             info!("Stopping oven task...");
 
-            timer.clear();
             should_run = false;
+            timer.clear();
+            halfwave_idx = 0;
+            pid_controller.update_setpoint(PID_SETPOINT);
         }
 
         if !should_run {
@@ -78,7 +82,7 @@ async fn main(_spawner: Spawner) {
             }
         };
 
-        info!("Current temperature: {} C", temp);
+        info!("Current temperature: {} C", temp as i32);
 
         let _elapsed = timer.elapsed_secs();
         let pid = pid_controller.compute_control(&temp);
