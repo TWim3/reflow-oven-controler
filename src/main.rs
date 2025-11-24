@@ -57,7 +57,7 @@ async fn main(_spawner: Spawner) {
             should_run = true;
         }
 
-        if stop_button.is_high() {
+        if stop_button.is_low() {
             Timer::after_millis(50).await;
             info!("Stopping oven task...");
 
