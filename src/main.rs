@@ -51,7 +51,7 @@ async fn main(_spawner: Spawner) {
     let halfwave_idx: u8 = 0;
 
     loop {
-        if start_button.is_high() {
+        if start_button.is_high() && !should_run {
             Timer::after_millis(50).await;
             info!("Starting oven task...");
             should_run = true;
