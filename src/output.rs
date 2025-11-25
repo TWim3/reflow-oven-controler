@@ -19,17 +19,17 @@ impl SignalOutput {
         }
     }
 
-    pub async fn output_signal(&mut self, mut halfwave_idx: u32, duty_percent: u32) {
-        self.zero_cross.wait_for_rising_edge().await;
+    pub async fn output_signal(&mut self, duty_percent: u32) {
+        for halfwave_idx in 0..HALFWAVES_PER_SECOND {
+            self.zero_cross.wait_for_rising_edge().await;
 
-        halfwave_idx = (halfwave_idx + 1) % HALFWAVES_PER_SECOND;
-
-        if halfwave_idx < percent_to_halfwave_count(duty_percent) {
-            self.triac_gate.set_high();
-            Timer::after_micros(TRIAC_PULSE_US as u64).await;
-            self.triac_gate.set_low();
-        } else {
-            self.triac_gate.set_low();
+            if halfwave_idx < percent_to_halfwave_count(duty_percent) {
+                self.triac_gate.set_high();
+                Timer::after_micros(TRIAC_PULSE_US as u64).await;
+                self.triac_gate.set_low();
+            } else {
+                self.triac_gate.set_low();
+            }
         }
     }
 }

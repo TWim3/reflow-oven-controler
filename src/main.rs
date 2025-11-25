@@ -57,7 +57,6 @@ async fn main(_spawner: Spawner) {
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
     let triac_gate = Output::new(p.PB1, Level::Low, Speed::VeryHigh);
     let mut signal_output = SignalOutput::new(zero_cross, triac_gate);
-    let mut halfwave_idx: u8 = 0;
 
     loop {
         if start_button.is_high() && !should_run {
@@ -72,7 +71,6 @@ async fn main(_spawner: Spawner) {
 
             should_run = false;
             timer.clear();
-            halfwave_idx = 0;
             pid_controller.update_setpoint(PID_SETPOINT);
         }
 
@@ -97,7 +95,7 @@ async fn main(_spawner: Spawner) {
         info!("Computed pid: {}", pid.output);
 
         signal_output
-            .output_signal(halfwave_idx as u32, pid.output as u32)
+            .output_signal(pid.output as u32)
             .await;
     }
 }
