@@ -12,12 +12,13 @@ use crate::temperature::pid_controller::PidController;
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::adc::{self, Adc};
-use embassy_stm32::bind_interrupts;
 use embassy_stm32::exti::ExtiInput;
-#[allow(unused_imports)]
 use embassy_stm32::gpio::{Input, Pull};
 use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::peripherals::ADC1;
+use embassy_stm32::rcc::{Hse, HseMode, Sysclk};
+use embassy_stm32::time::mhz;
+use embassy_stm32::{Config, bind_interrupts};
 use embassy_time::Timer;
 use temperature::temp_sensor::TempSensor;
 use {defmt_rtt as _, panic_probe as _};
@@ -28,7 +29,13 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_stm32::init(Default::default());
+    let mut config = Config::default();
+    config.rcc.hse = Some(Hse {
+        freq: mhz(16),
+        mode: HseMode::Oscillator,
+    });
+    config.rcc.sys = Sysclk::HSE;
+    let p = embassy_stm32::init(config);
 
     // Temperature sensor
     let mut adc = Adc::new(p.ADC1);
