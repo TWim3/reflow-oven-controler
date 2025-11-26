@@ -86,8 +86,8 @@ async fn main(_spawner: Spawner) {
                 continue;
             }
         };
-
-        info!("Current temperature: {} C", temp as i32);
+        let t10 = (temp * 10.0) as i32;
+        info!("Current temperature: {}.{} C", t10 / 10, (t10 % 10).abs());
 
         let _elapsed = timer.elapsed_secs();
         let pid = pid_controller.compute_control(&temp);
