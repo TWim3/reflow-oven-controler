@@ -4,7 +4,7 @@ use embassy_time::Timer;
 
 const HALFWAVES_PER_SECOND: u32 = 100;
 
-const TRIAC_PULSE_US: u32 = 2000;
+const TRIAC_PULSE_US: u32 = 200;
 
 pub struct SignalOutput {
     zero_cross: ExtiInput<'static>,
