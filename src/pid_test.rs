@@ -13,7 +13,7 @@ use defmt::info;
 // KP_STEP, KI_STEP, KD_STEP und die jeweiligen MIN/MAX-Werte bestimmen, wie aggressiv P/I/D nachgestellt werden.
 // DERIV_GAIN verstaerkt die Reaktion auf steile Fehleraenderungen; hoeher = mehr Daempfung bei schnellen Spruengen.
 const OUTPUT_LIMIT: f32 = 100.0;
-const ENABLE_AUTOTUNE: bool = true;
+const ENABLE_AUTOTUNE: bool = false;
 const ERROR_BAND: f32 = 0.5;
 const KP_STEP: f32 = 0.25;
 const KI_STEP: f32 = 0.02;
@@ -24,6 +24,10 @@ const KI_MAX: f32 = 5.0;
 const KD_MAX: f32 = 15.0;
 const DERIV_GAIN: f32 = 0.02;
 const STABLE_THRESHOLD: u16 = 8;
+
+const KP_INITIAL: f32 = 10.0;   // Startwert P-Gain
+const KI_INITIAL: f32 = 0.015;  // Startwert I-Gain (1/s)
+const KD_INITIAL: f32 = 0.0;    // Startwert D-Gain
 
 struct AutotuneState {
     kp: f32,
@@ -106,7 +110,12 @@ pub fn pid_output_for_duty_cycle(measured_value: f32) -> u8 {
     let control = interrupt::free(|cs| {
         let mut controller_ref = CONTROLLER.borrow(cs).borrow_mut();
         let controller = controller_ref
-            .get_or_insert_with(|| PidController::new(setpoint, OUTPUT_LIMIT));
+            .get_or_insert_with(|| {
+                let mut c = PidController::new(setpoint, OUTPUT_LIMIT);
+                // Startwerte fuer den PID-Regler setzen (aus der vorherigen Empfehlung)
+                c.update_gains(KP_INITIAL, KI_INITIAL, KD_INITIAL);
+                c
+            });
 
         let mut state = AUTOTUNE_STATE.borrow(cs).borrow_mut();
         if ENABLE_AUTOTUNE {
