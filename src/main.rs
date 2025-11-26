@@ -51,7 +51,7 @@ async fn main(_spawner: Spawner) {
     const PID_SETPOINT: f32 = 50.0;
 
     let mut timer = OvenTimer::new();
-    let mut pid_controller = PidController::new(PID_SETPOINT, 100.0);
+    let mut pid_controller = PidController::new(PID_SETPOINT, 100.0, false);
 
     // Output
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
@@ -94,8 +94,6 @@ async fn main(_spawner: Spawner) {
 
         info!("Computed pid: {}", pid.output);
 
-        signal_output
-            .output_signal(pid.output as u32)
-            .await;
+        signal_output.output_signal(pid.output as u32).await;
     }
 }
