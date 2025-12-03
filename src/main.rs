@@ -8,7 +8,6 @@ mod output;
 
 use crate::output::SignalOutput;
 use crate::oven_timer::OvenTimer;
-use crate::temperature::pid_controller::PidController;
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::adc::{self, Adc};
@@ -22,6 +21,7 @@ use embassy_stm32::{Config, bind_interrupts};
 use embassy_time::Timer;
 use temperature::temp_sensor::TempSensor;
 use {defmt_rtt as _, panic_probe as _};
+use crate::temperature::temp_curve::TempCurve;
 
 bind_interrupts!(struct Irqs {
     ADC1_2 => adc::InterruptHandler<ADC1>;
@@ -48,10 +48,8 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     // PID Controller and Timer
-    const PID_SETPOINT: f32 = 50.0;
-
+    let mut temp_curve = TempCurve::new(5, [(90, 150.0), (180, 175.0), (200, 220.0), (250, 240.0), (300, 250.0)]);
     let mut timer = OvenTimer::new();
-    let mut pid_controller = PidController::new(PID_SETPOINT, 100.0, false);
 
     // Output
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
@@ -71,7 +69,7 @@ async fn main(_spawner: Spawner) {
 
             should_run = false;
             timer.clear();
-            pid_controller.update_setpoint(PID_SETPOINT);
+            //TODO reset pid curve
         }
 
         if !should_run {
@@ -89,11 +87,21 @@ async fn main(_spawner: Spawner) {
         let t10 = (temp * 10.0) as i32;
         info!("Current temperature: {}.{} C", t10 / 10, (t10 % 10).abs());
 
-        let _elapsed = timer.elapsed_secs();
-        let pid = pid_controller.compute_control(&temp);
+        let elapsed = timer.elapsed_secs();
+        let pid_output = temp_curve.compute_control(&elapsed, &temp);
 
-        info!("Computed pid: {}", pid.output);
+        let pid_output = match pid_output {
+            Some(output) => output,
+            None => {
+                info!("Temperature curve complete.");
+                should_run = false;
+                timer.clear();
+                0.0
+            }
+        };
 
-        signal_output.output_signal(pid.output as u32).await;
+        info!("Computed pid: {}", pid_output);
+
+        signal_output.output_signal(pid_output as u32).await;
     }
 }
