@@ -11,10 +11,10 @@ impl OvenTimer {
 
     pub fn elapsed_secs(&mut self) -> u64 {
         match self.instant {
-            Some(start_instant) => start_instant.as_secs(),
+            Some(start_instant) => start_instant.elapsed().as_secs(),
             None => {
                 self.instant = Some(Instant::now());
-                self.instant.unwrap().as_secs()
+                self.instant.unwrap().elapsed().as_secs()
             }
         }
     }
