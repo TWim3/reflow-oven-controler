@@ -1,7 +1,7 @@
 use defmt::info;
 use crate::temperature::pid_controller::PidController;
 
-const MAX_POINTS: usize = 5;
+const MAX_POINTS: usize = 4;
 
 pub struct TempCurve {
     length: u8,

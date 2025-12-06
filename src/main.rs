@@ -48,7 +48,7 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     // PID Controller and Timer
-    let mut temp_curve = TempCurve::new(5, [(90, 150.0), (180, 175.0), (200, 220.0), (250, 240.0), (300, 250.0)]);
+    let mut temp_curve = TempCurve::new(4, [(90, 150.0), (180, 175.0), (200, 220.0), (235, 240.0)]);
     let mut timer = OvenTimer::new();
 
     // Output
