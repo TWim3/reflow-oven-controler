@@ -27,8 +27,8 @@ impl TempCurve {
     fn get_target_temperature(&self, elapsed_secs: &u64, current_temp: f32) -> f32 {
         let elapsed = *elapsed_secs as u32;
         for i in 0..self.length as usize {
-            if elapsed < self.points[i].0 && current_temp >= self.points[i].1 + self.points[i].2 {
-                return self.points[i].1 + self.points[i].2;
+            if elapsed < self.points[i].0 && current_temp >= self.points[i].1 {
+                return self.points[i].1;
             }
 
             if elapsed < self.points[i].0 {
