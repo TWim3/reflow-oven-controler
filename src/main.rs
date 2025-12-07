@@ -74,6 +74,7 @@ async fn main(_spawner: Spawner) {
 
         if !should_run {
             Timer::after_millis(100).await;
+            signal_output.output_signal(0).await;
             continue;
         }
 
