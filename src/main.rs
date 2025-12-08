@@ -48,11 +48,12 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     // PID Controller and Timer
-    let mut temp_curve = TempCurve::new(4, [(90, 150.0, 0.0), (180, 175.0, 0.0), (200, 220.0, 0.0), (235, 240.0, 0.0)]);
+    let mut temp_curve = TempCurve::new(4, [(130, 150.0, 20.0), (220, 175.0, 10.0), (240, 220.0, 0.0), (280, 240.0, 0.0)]);
     let mut timer = OvenTimer::new();
 
     // Output
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
+
     let triac_gate = Output::new(p.PB1, Level::Low, Speed::VeryHigh);
     let mut signal_output = SignalOutput::new(zero_cross, triac_gate);
 

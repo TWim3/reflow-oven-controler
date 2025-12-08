@@ -2,9 +2,9 @@ use crate::temperature::pid_auto_tune::AutotuneState;
 use defmt::info;
 use pid::{ControlOutput, Pid};
 
-pub const DEFAULT_P_GAIN: f32 = 1.6;
-pub const DEFAULT_I_GAIN: f32 = 0.02;
-pub const DEFAULT_D_GAIN: f32 = 0.1;
+pub const DEFAULT_P_GAIN: f32 = 2.0;
+pub const DEFAULT_I_GAIN: f32 = 0.01;
+pub const DEFAULT_D_GAIN: f32 = 0.4;
 
 pub struct PidController {
     pid: Pid<f32>,
