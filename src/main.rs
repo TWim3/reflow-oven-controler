@@ -89,7 +89,13 @@ async fn main(_spawner: Spawner) {
         let t10 = (temp * 10.0) as i32;
         info!("Current temperature: {}.{} C", t10 / 10, (t10 % 10).abs());
 
-        let elapsed = timer.elapsed_secs();
+        const TEMP_BEFORE_TIMER_START: f32 = 40.0;
+
+        let elapsed = match temp {
+            t if t < TEMP_BEFORE_TIMER_START => 0,
+            _ => timer.elapsed_secs(),
+        };
+
         let pid_output = temp_curve.compute_control(&elapsed, &temp);
 
         let pid_output = match pid_output {
