@@ -48,7 +48,7 @@ async fn main(_spawner: Spawner) {
     let mut should_run = false;
 
     // PID Controller and Timer
-    let mut temp_curve = TempCurve::new(4, [(130, 150.0, 20.0), (220, 175.0, 10.0), (240, 220.0, 0.0), (280, 240.0, 0.0)]);
+    let mut temp_curve = TempCurve::new(4, [(1, 150.0, 20.0), (10, 200.0, 10.0), (130, 255.0, 10.0), (185, 60.0, 0.0)]);
     let mut timer = OvenTimer::new();
 
     // Output
@@ -89,7 +89,7 @@ async fn main(_spawner: Spawner) {
         let t10 = (temp * 10.0) as i32;
         info!("Current temperature: {}.{} C", t10 / 10, (t10 % 10).abs());
 
-        const TEMP_BEFORE_TIMER_START: f32 = 40.0;
+        const TEMP_BEFORE_TIMER_START: f32 = 150.0;
 
         let elapsed = match temp {
             t if t < TEMP_BEFORE_TIMER_START => 0,
