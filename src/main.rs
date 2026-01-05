@@ -108,7 +108,7 @@ async fn main(_spawner: Spawner) {
             limit_output: 0.0,
         },
     ]);
-    let mut pid_controller = PidController::new(0.0, 0.0);
+    let mut pid_controller = PidController::new(0.0, 100.0);
 
     loop {
         if start_button.is_high() && !should_run {
@@ -161,7 +161,7 @@ async fn main(_spawner: Spawner) {
         }
 
         pid_controller.update_setpoint(curve_value.0);
-        let pid_output = pid_controller.compute_control(&temp).output;
+        let pid_output = pid_controller.compute_control(&temp).output % curve_value.1;
 
         info!("Computed pid: {}", pid_output);
 
