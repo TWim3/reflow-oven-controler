@@ -108,7 +108,7 @@ async fn main(_spawner: Spawner) {
             limit_output: 0.0,
         },
     ]);
-    let mut pid_controller = PidController::new(0.0, 0.0, false);
+    let mut pid_controller = PidController::new(0.0, 0.0);
 
     loop {
         if start_button.is_high() && !should_run {
@@ -147,7 +147,7 @@ async fn main(_spawner: Spawner) {
             curve_value.0, curve_value.1
         );
 
-        if (temp_curve.current_state == CurveState::Cooldown && temp <= curve_value.0) {
+        if temp_curve.current_state == CurveState::Cooldown && temp <= curve_value.0 {
             info!("Cooldown complete. Stopping oven.");
             should_run = false;
             temp_curve.reset();
@@ -155,7 +155,7 @@ async fn main(_spawner: Spawner) {
             continue;
         }
 
-        if (curve_value.0 <= temp || curve_value.1 <= 0.0) {
+        if curve_value.0 <= temp || curve_value.1 <= 0.0 {
             signal_output.output_signal(0).await;
             continue;
         }
