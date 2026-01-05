@@ -1,13 +1,13 @@
 #![no_std]
 #![no_main]
 
-mod oven_timer;
 mod temperature;
 
 mod output;
 
 use crate::output::SignalOutput;
-use crate::oven_timer::OvenTimer;
+use crate::temperature::pid_controller::PidController;
+use crate::temperature::temp_config::{CurveState, TempConfig, TempState};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::adc::{self, Adc};
@@ -21,14 +21,42 @@ use embassy_stm32::{Config, bind_interrupts};
 use embassy_time::Timer;
 use temperature::temp_sensor::TempSensor;
 use {defmt_rtt as _, panic_probe as _};
-use crate::temperature::temp_curve::TempCurve;
 
 bind_interrupts!(struct Irqs {
     ADC1_2 => adc::InterruptHandler<ADC1>;
 });
 
+/*
+Step by step todo
+- start via start button
+- 1.
+    - rise until temp x
+
+    - next step when temp is reached
+- 2.
+    - start timer
+    - rise until temp x+1
+    - only with max duty cycle 50%
+
+    - next step when time is t or temp is reached
+- 3.
+    - rise until temp x+2
+    - no limit on duty cycle
+
+    - next step when temp is reached
+- 4.
+    - turn off oven
+    - keep temp output until less then x+3
+
+    - next step when temp is reached
+
+- 5.
+    - reset everything
+ */
+
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
+    //********************************** Setup *********************************
     let mut config = Config::default();
     config.rcc.hse = Some(Hse {
         freq: mhz(16),
@@ -47,15 +75,40 @@ async fn main(_spawner: Spawner) {
     let stop_button = Input::new(p.PB14, Pull::Up);
     let mut should_run = false;
 
-    // PID Controller and Timer
-    let mut temp_curve = TempCurve::new(6, [(1, 150.0, 20.0), (10, 180.0, 0.0), (60, 200.0, 0.0), (130, 255.0, 10.0), (190, 60.0, 0.0), (600, 30.0, 0.0)]);
-    let mut timer = OvenTimer::new();
-
     // Output
     let zero_cross = ExtiInput::new(p.PA7, p.EXTI7, Pull::Up);
-
     let triac_gate = Output::new(p.PB1, Level::Low, Speed::VeryHigh);
     let mut signal_output = SignalOutput::new(zero_cross, triac_gate);
+    //**************************************************************************
+
+    // PID Controller and Timer
+    let mut temp_curve = TempConfig::new([
+        TempState {
+            target_temp: 150.0,
+            time_limit: 0,
+            offset: 10.0,
+            limit_output: 100.0,
+        },
+        TempState {
+            target_temp: 200.0,
+            time_limit: 0,
+            offset: 0.0,
+            limit_output: 50.0,
+        },
+        TempState {
+            target_temp: 250.0,
+            time_limit: 0,
+            offset: 0.0,
+            limit_output: 100.0,
+        },
+        TempState {
+            target_temp: 80.0,
+            time_limit: 0,
+            offset: 0.0,
+            limit_output: 0.0,
+        },
+    ]);
+    let mut pid_controller = PidController::new(0.0, 0.0, false);
 
     loop {
         if start_button.is_high() && !should_run {
@@ -69,8 +122,7 @@ async fn main(_spawner: Spawner) {
             info!("Stopping oven task...");
 
             should_run = false;
-            timer.clear();
-            //TODO reset pid curve
+            temp_curve.reset();
         }
 
         if !should_run {
@@ -89,24 +141,27 @@ async fn main(_spawner: Spawner) {
         let t10 = (temp * 10.0) as i32;
         info!("Current temperature: {}.{} C", t10 / 10, (t10 % 10).abs());
 
-        const TEMP_BEFORE_TIMER_START: f32 = 150.0;
+        let curve_value = temp_curve.get_target_temp(temp);
+        info!(
+            "Target temperature: {} C, Output limit: {}%",
+            curve_value.0, curve_value.1
+        );
 
-        let elapsed = match temp {
-            t if t < TEMP_BEFORE_TIMER_START => 0,
-            _ => timer.elapsed_secs(),
-        };
+        if (temp_curve.current_state == CurveState::Cooldown && temp <= curve_value.0) {
+            info!("Cooldown complete. Stopping oven.");
+            should_run = false;
+            temp_curve.reset();
+            signal_output.output_signal(0).await;
+            continue;
+        }
 
-        let pid_output = temp_curve.compute_control(&elapsed, &temp);
+        if (curve_value.0 <= temp || curve_value.1 <= 0.0) {
+            signal_output.output_signal(0).await;
+            continue;
+        }
 
-        let pid_output = match pid_output {
-            Some(output) => output,
-            None => {
-                info!("Temperature curve complete.");
-                should_run = false;
-                timer.clear();
-                0.0
-            }
-        };
+        pid_controller.update_setpoint(curve_value.0);
+        let pid_output = pid_controller.compute_control(&temp).output;
 
         info!("Computed pid: {}", pid_output);
 

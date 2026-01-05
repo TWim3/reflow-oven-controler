@@ -1,4 +1,6 @@
-pub mod temp_curve;
+pub mod temp_config;
 pub mod temp_sensor;
-mod pid_controller;
+pub mod pid_controller;
+
+mod temp_curve;
 mod pid_auto_tune;
