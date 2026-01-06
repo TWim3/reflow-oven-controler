@@ -155,11 +155,6 @@ async fn main(_spawner: Spawner) {
             continue;
         }
 
-        if curve_value.0 <= temp || curve_value.1 <= 0.0 {
-            signal_output.output_signal(0).await;
-            continue;
-        }
-
         pid_controller.update_setpoint(curve_value.0);
         let pid_output = pid_controller.compute_control(&temp).output.clamp(0.0, curve_value.1);
 
