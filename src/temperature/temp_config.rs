@@ -54,7 +54,7 @@ impl TempConfig {
     pub fn get_target_temp(&mut self, current_temp: f32) -> (f32, f32) {
         let state = self.get_current_state();
 
-        if current_temp >= state.target_temp || (state.time_limit != 0 && self.timer.elapsed().as_secs() > state.time_limit) {
+        if current_temp >= state.target_temp && self.current_state != CurveState::Cooldown || (state.time_limit != 0 && self.timer.elapsed().as_secs() > state.time_limit) {
             self.advance_state();
             return self.get_target_temp(current_temp);
         }
