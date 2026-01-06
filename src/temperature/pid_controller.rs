@@ -28,6 +28,11 @@ impl PidController {
             .i(DEFAULT_I_GAIN, self.output_limit)
             .d(DEFAULT_D_GAIN, self.output_limit);
     }
+
+    pub fn reset(&mut self) {
+        self.pid.reset_integral_term();
+        self.update_setpoint(0.0);
+    }
     
     pub fn compute_control(&mut self, measurement: &f32) -> ControlOutput<f32> {
         self.pid.next_control_output(*measurement)
