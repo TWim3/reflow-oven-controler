@@ -84,7 +84,7 @@ async fn main(_spawner: Spawner) {
     // PID Controller and Timer
     let mut temp_curve = TempConfig::new([
         TempState {
-            target_temp: 150.0,
+            target_temp: 130.0,
             time_limit: 0,
             offset: 15.0,
             limit_output: 100.0,
