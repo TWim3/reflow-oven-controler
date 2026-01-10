@@ -86,17 +86,17 @@ async fn main(_spawner: Spawner) {
         TempState {
             target_temp: 150.0,
             time_limit: 0,
-            offset: 10.0,
+            offset: 15.0,
             limit_output: 100.0,
         },
         TempState {
-            target_temp: 200.0,
-            time_limit: 0,
+            target_temp: 190.0,
+            time_limit: 140,
             offset: 0.0,
-            limit_output: 50.0,
+            limit_output: 55.0,
         },
         TempState {
-            target_temp: 250.0,
+            target_temp: 245.0,
             time_limit: 0,
             offset: 0.0,
             limit_output: 100.0,
